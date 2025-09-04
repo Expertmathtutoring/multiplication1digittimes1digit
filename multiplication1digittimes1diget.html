@@ -1,0 +1,231 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>🎈 Multiplication Balloon Game</title>
+<style>
+  body {
+    margin:0;
+    font-family: "Trebuchet MS", sans-serif;
+    color:#fff;
+    min-height:100vh;
+    display:flex;
+    overflow:hidden;
+    background: linear-gradient(135deg,#1a2a6c,#b21f1f,#fdbb2d);
+    background-size:400% 400%;
+    animation: bgShift 14s ease infinite;
+  }
+  @keyframes bgShift{
+    0%{background-position:0% 50%}
+    50%{background-position:100% 50%}
+    100%{background-position:0% 50%}
+  }
+  .sidebar{
+    width:220px;
+    padding:16px;
+    background:rgba(0,0,0,.3);
+    border-right:1px solid rgba(255,255,255,.2)
+  }
+  .tab{
+    display:block;
+    width:100%;
+    margin:8px 0;
+    padding:10px;
+    border-radius:10px;
+    background:rgba(255,255,255,.15);
+    color:#fff;
+    border:none;
+    cursor:pointer;
+    transition:.2s
+  }
+  .tab:hover{background:rgba(255,255,255,.3)}
+  .main{flex:1;display:flex;flex-direction:column;padding:16px}
+  .topbar{
+    display:flex;
+    flex-wrap:wrap;
+    justify-content:space-around;
+    align-items:center;
+    background: rgba(0,0,0,.3);
+    padding: 8px 12px;
+    border-radius: 10px;
+    margin-bottom: 12px;
+  }
+  .badge{
+    background: rgba(255,255,255,.15);
+    padding: 6px 10px;
+    border-radius: 10px;
+    margin: 4px;
+  }
+  .question{
+    font-weight: bold;
+    font-size: 1.8em;
+    text-align:center;
+    flex-basis: 100%;
+    margin: 4px 0;
+  }
+  #gameArea{
+    flex:1;
+    position:relative;
+    border:2px solid rgba(255,255,255,.8);
+    border-radius:14px;
+    overflow:hidden;
+    background:rgba(0,0,0,.25)
+  }
+  .balloon{
+    position:absolute;
+    width:100px;
+    height:120px;
+    border-radius:50%/60% 60% 40% 40%;
+    line-height:120px;
+    text-align:center;
+    font-weight:bold;
+    font-size:40px;
+    cursor:pointer;
+    color:#fff;
+    animation:floatUp 6s linear forwards;
+    animation-play-state:running;
+    box-shadow:0 6px 12px rgba(0,0,0,.25);
+  }
+  @keyframes floatUp{from{bottom:-140px}to{bottom:102%}}
+  .balloon::after{
+    content:"";
+    position:absolute;
+    left:50%;
+    transform:translateX(-50%);
+    bottom:-18px;
+    width:2px;
+    height:24px;
+    background:#fff
+  }
+  .pop{transform:scale(.1);opacity:0;transition:.2s}
+  #message{text-align:center;margin-top:8px;font-weight:bold;font-size:1.2em}
+  .paused .balloon{animation-play-state:paused !important;}
+</style>
+</head>
+<body>
+  <aside class="sidebar">
+    <h2>🎈 Balloon Math</h2>
+    <button class="tab" id="restartTab">Restart</button>
+    <button class="tab" id="pauseTab">Pause</button>
+    <button class="tab" id="stopTab">Stop</button>
+    <button class="tab" id="helpTab">Help</button>
+  </aside>
+  <main class="main">
+    <div class="topbar">
+      <div class="badge">Score: <span id="score">0</span></div>
+      <div class="badge">Round: <span id="round">0</span>/20</div>
+      <div class="question" id="question">Press Restart to begin</div>
+    </div>
+    <div id="gameArea"></div>
+    <div id="message"></div>
+  </main>
+
+<script>
+(() => {
+  let score=0, round=0, active=false, paused=false;
+  let correctAns=null, balloons=[];
+  const maxRounds=20;
+  const gameArea=document.getElementById("gameArea");
+  const $=id=>document.getElementById(id);
+
+  const cheer=new Audio("https://actions.google.com/sounds/v1/cartoon/clang_and_wobble.ogg");
+  const fail=new Audio("https://actions.google.com/sounds/v1/cartoon/wood_plank_flicks.ogg");
+
+  function randInt(min,max){return Math.floor(Math.random()*(max-min+1))+min;}
+
+  function generateQuestion(){
+    const a=randInt(1,9), b=randInt(1,9);
+    correctAns=a*b;
+    $("question").textContent=`Solve: ${a} × ${b}`;
+    return correctAns;
+  }
+
+  function makeAnswers(correct){
+    const answers=new Set([correct]);
+    while(answers.size<4){
+      let delta=randInt(-5,5);
+      if(delta!==0) answers.add(correct+delta);
+    }
+    return Array.from(answers).sort(()=>Math.random()-.5);
+  }
+
+  function clearArea(){balloons.forEach(b=>b.el.remove()); balloons=[]; $("message").textContent="";}
+
+  function startRound(){
+    if(paused) return;
+    if(round>=maxRounds){endGame(); return;}
+    clearArea();
+    round++;
+    $("round").textContent=round;
+    const correct=generateQuestion();
+    const answers=makeAnswers(correct);
+    active=true;
+    const cols=[15,40,65,85].sort(()=>Math.random()-.5);
+    answers.forEach((val,i)=>{
+      const el=document.createElement("div");
+      el.className="balloon";
+      el.style.left=cols[i]+"%";
+      el.style.bottom="-140px";
+      el.style.background=`hsl(${randInt(0,360)},70%,50%)`;
+      el.textContent=val;
+      gameArea.appendChild(el);
+      const obj={el,val};
+      balloons.push(obj);
+      el.addEventListener("click",()=>{
+        if(!active||paused) return;
+        if(val===correct){
+          score++;
+          $("score").textContent=score;
+          el.classList.add("pop");
+          cheer.play();
+          active=false;
+          setTimeout(startRound,800);
+        } else {
+          fail.play();
+          el.classList.add("pop");
+        }
+      });
+    });
+  }
+
+  function endGame(){
+    active=false;
+    $("question").textContent="🎉 Game Over! Final Score: "+score;
+    $("message").textContent="Press Restart to play again.";
+  }
+
+  // --- Tabs ---
+  $("restartTab").onclick=()=>{
+    score=0; round=0; active=false; paused=false;
+    $("score").textContent=0; $("round").textContent=0;
+    clearArea();
+    $("question").textContent="Get ready!";
+    setTimeout(startRound,500);
+  };
+
+  $("pauseTab").onclick=()=>{
+    paused=!paused;
+    if(paused){
+      gameArea.classList.add("paused");
+      $("message").textContent="⏸ Paused";
+    } else {
+      gameArea.classList.remove("paused");
+      $("message").textContent="▶ Resumed";
+      if(!active && round<maxRounds) startRound();
+    }
+  };
+
+  $("stopTab").onclick=()=>{
+    active=false; paused=false;
+    clearArea();
+    $("question").textContent="⏹ Stopped. Press Restart to play again.";
+  };
+
+  $("helpTab").onclick=()=>{
+    alert("🎈 How to Play:\n\n- A multiplication question appears.\n- Click the balloon with the correct answer.\n- Score a point for each correct answer.\n- 20 rounds total.\n- Use Pause, Stop, or Restart anytime.");
+  };
+})();
+</script>
+</body>
+</html>
