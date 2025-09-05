@@ -101,25 +101,40 @@
   .pop{transform:scale(.1);opacity:0;transition:.2s}
   #message{text-align:center;margin-top:8px;font-weight:bold;font-size:1.2em}
   .paused .balloon{animation-play-state:paused !important;}
+
+  /* Firework sparks */
+  .spark {
+    position: absolute;
+    width: 14px;
+    height: 14px;
+    border-radius: 50%;
+    pointer-events: none;
+    opacity: 0.9;
+    animation: explode 2s forwards;
+  }
+  @keyframes explode {
+    from { transform: translate(0,0) scale(1); opacity:1; }
+    to { transform: translate(var(--x), var(--y)) scale(0.3); opacity:0; }
+  }
 </style>
 </head>
 <body>
-  <aside class="sidebar">
-    <h2>🎈 Balloon Math</h2>
-    <button class="tab" id="restartTab">Restart</button>
-    <button class="tab" id="pauseTab">Pause</button>
-    <button class="tab" id="stopTab">Stop</button>
-    <button class="tab" id="helpTab">Help</button>
-  </aside>
-  <main class="main">
-    <div class="topbar">
-      <div class="badge">Score: <span id="score">0</span></div>
-      <div class="badge">Round: <span id="round">0</span>/20</div>
-      <div class="question" id="question">Press Restart to begin</div>
-    </div>
-    <div id="gameArea"></div>
-    <div id="message"></div>
-  </main>
+<aside class="sidebar">
+  <h2>🎈 Balloon Math</h2>
+  <button class="tab" id="restartTab">Restart</button>
+  <button class="tab" id="pauseTab">Pause</button>
+  <button class="tab" id="stopTab">Stop</button>
+  <button class="tab" id="helpTab">Help</button>
+</aside>
+<main class="main">
+  <div class="topbar">
+    <div class="badge">Score: <span id="score">0</span></div>
+    <div class="badge">Round: <span id="round">0</span>/20</div>
+    <div class="question" id="question">Press Restart to begin</div>
+  </div>
+  <div id="gameArea"></div>
+  <div id="message"></div>
+</main>
 
 <script>
 (() => {
@@ -129,7 +144,7 @@
   const gameArea=document.getElementById("gameArea");
   const $=id=>document.getElementById(id);
 
-  const cheer=new Audio("https://actions.google.com/sounds/v1/cartoon/clang_and_wobble.ogg");
+  const cheer=new Audio("https://actions.google.com/sounds/v1/human_voices/applause.ogg");
   const fail=new Audio("https://actions.google.com/sounds/v1/cartoon/wood_plank_flicks.ogg");
 
   function randInt(min,max){return Math.floor(Math.random()*(max-min+1))+min;}
@@ -178,8 +193,10 @@
           score++;
           $("score").textContent=score;
           el.classList.add("pop");
-          cheer.play();
           active=false;
+          cheer.currentTime=0;
+          cheer.play();
+          launchFireworks(el);
           setTimeout(startRound,800);
         } else {
           fail.play();
@@ -187,6 +204,25 @@
         }
       });
     });
+  }
+
+  function launchFireworks(target){
+    const rect=target.getBoundingClientRect();
+    const centerX=rect.left+rect.width/2;
+    const centerY=rect.top+rect.height/2;
+    for(let i=0;i<200;i++){
+      const spark=document.createElement("div");
+      spark.className="spark";
+      const angle=Math.random()*2*Math.PI;
+      const dist=Math.random()*500+50;
+      spark.style.setProperty("--x", `${Math.cos(angle)*dist}px`);
+      spark.style.setProperty("--y", `${Math.sin(angle)*dist}px`);
+      spark.style.left=centerX+"px";
+      spark.style.top=centerY+"px";
+      spark.style.background=`hsl(${Math.random()*360},100%,60%)`;
+      document.body.appendChild(spark);
+      setTimeout(()=>spark.remove(),2000);
+    }
   }
 
   function endGame(){
@@ -203,7 +239,6 @@
     $("question").textContent="Get ready!";
     setTimeout(startRound,500);
   };
-
   $("pauseTab").onclick=()=>{
     paused=!paused;
     if(paused){
@@ -215,13 +250,11 @@
       if(!active && round<maxRounds) startRound();
     }
   };
-
   $("stopTab").onclick=()=>{
     active=false; paused=false;
     clearArea();
     $("question").textContent="⏹ Stopped. Press Restart to play again.";
   };
-
   $("helpTab").onclick=()=>{
     alert("🎈 How to Play:\n\n- A multiplication question appears.\n- Click the balloon with the correct answer.\n- Score a point for each correct answer.\n- 20 rounds total.\n- Use Pause, Stop, or Restart anytime.");
   };
@@ -229,3 +262,5 @@
 </script>
 </body>
 </html>
+
+
